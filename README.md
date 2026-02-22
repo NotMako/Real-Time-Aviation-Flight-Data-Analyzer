@@ -15,6 +15,10 @@ Features:
 - Handles API errors and rate limiting
 - Clear console output for a “live” dashboard feel
 
+Version Information:
+- Version 1: Global tracker using live OpenSky API data (restricted for free accounts)
+- Version 2: Uses pre-existing downloadable datasets to simulate global air traffic due to OpenSky’s restrictions
+  
 Note:
 Requires an OpenSky account with verified API access.
 Free accounts have restrictions on global live data; regional or pre-curated datasets are recommended for personal projects.
