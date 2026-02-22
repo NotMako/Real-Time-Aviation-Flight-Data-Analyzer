@@ -17,7 +17,7 @@ Features:
 
 Version Information:
 - Version 1: Global tracker using live OpenSky API data (restricted for free accounts)
-- Version 2: Uses pre-existing downloadable datasets to simulate global air traffic due to OpenSky’s restrictions
+- Version 2: Tracks flights within 50 km of YVR, shows distance, altitude and callsign
   
 Note:
 Requires an OpenSky account with verified API access.
