@@ -9,7 +9,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.LocalTime;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 
 public class App {
@@ -17,10 +16,9 @@ public class App {
     private static final HttpClient client = HttpClient.newHttpClient();
     private static final ObjectMapper mapper = new ObjectMapper();
 
+    // YVR Coordinates
     private static final double YVR_LAT = 49.1967;
     private static final double YVR_LON = -123.1815;
-
-    private static final Map<String, Double> trackedAircraft = new HashMap<>();
 
     public static void main(String[] args) throws Exception {
 
@@ -39,70 +37,88 @@ public class App {
                 .GET()
                 .build();
 
-        HttpResponse<String> response = client.send(
-                request, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response =
+                client.send(request, HttpResponse.BodyHandlers.ofString());
 
         clearConsole();
 
         if (response.statusCode() != 200) {
             System.out.println("API Error: " + response.statusCode());
-            System.out.println(response.body());
             return;
         }
 
         JsonNode root = mapper.readTree(response.body());
         JsonNode states = root.get("states");
 
-        System.out.println("===== YVR AIRSPACE MONITOR =====");
-        System.out.println("Last Updated: " + LocalTime.now());
-        System.out.println("---------------------------------\n");
+        System.out.println("========= YVR AIRSPACE MONITOR =========");
+        System.out.println("Last Updated: " + LocalTime.now().withNano(0));
+        System.out.println("========================================\n");
 
         if (states == null || states.size() == 0) {
             System.out.println("No aircraft detected.");
             return;
         }
 
-        Map<String, Double> currentSnapshot = new HashMap<>();
+        Map<String, String> airborne = new HashMap<>();
+        Map<String, String> ground = new HashMap<>();
 
         for (JsonNode flight : states) {
 
-            JsonNode altitudeNode = flight.get(7);
-            JsonNode latNode = flight.get(6);
-            JsonNode lonNode = flight.get(5);
-            JsonNode onGroundNode = flight.get(8);
+            if (flight.get(7).isNull() ||
+                flight.get(6).isNull() ||
+                flight.get(5).isNull() ||
+                flight.get(9).isNull())
+                continue;
 
-            if (altitudeNode == null || altitudeNode.isNull()) continue;
-            if (latNode == null || latNode.isNull()) continue;
-            if (lonNode == null || lonNode.isNull()) continue;
-            if (onGroundNode != null && onGroundNode.asBoolean()) continue;
-
-            double altitudeMeters = altitudeNode.asDouble();
-            if (altitudeMeters <= 0) continue;
-
-            double altitudeFeet = altitudeMeters * 3.28084;
-            double lat = latNode.asDouble();
-            double lon = lonNode.asDouble();
-
-            String icao = flight.get(0).asText();
             String callsign = flight.get(1).asText().trim();
+            if (callsign.isEmpty()) callsign = "N/A";
+
+            double lat = flight.get(6).asDouble();
+            double lon = flight.get(5).asDouble();
+            double altitudeFeet = flight.get(7).asDouble() * 3.28084;
+            double speedKnots = flight.get(9).asDouble() * 1.94384;
+
+            if (altitudeFeet < -100 || speedKnots < 0)
+                continue;
 
             double distance = haversine(lat, lon, YVR_LAT, YVR_LON);
 
-            currentSnapshot.put(icao, altitudeFeet);
+            if (distance > 50)
+                continue;
 
-            System.out.printf(
-                    "Callsign: %-10s | Alt: %6.0f ft | Dist: %5.1f km%n",
-                    callsign.isEmpty() ? "N/A" : callsign,
+            String line = String.format(
+                    "%-10s | %6.0f ft | %5.0f kt | %5.1f km",
+                    callsign,
                     altitudeFeet,
+                    speedKnots,
                     distance
             );
+
+            if (altitudeFeet > 500 && speedKnots > 50) {
+                airborne.put(callsign, line);
+            }
+            else if (distance <= 10) {
+                ground.put(callsign, line);
+            }
         }
 
-        trackedAircraft.clear();
-        trackedAircraft.putAll(currentSnapshot);
+        System.out.println("--- AIRBORNE (within 50km) ---");
+        airborne.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .forEach(entry -> System.out.println(entry.getValue()));
 
-        System.out.println("\nCurrently Tracking: " + trackedAircraft.size() + " aircraft");
+        System.out.println();
+
+        System.out.println("--- ON GROUND (within 10km) ---");
+        ground.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .forEach(entry -> System.out.println(entry.getValue()));
+
+        System.out.println();
+        System.out.println("Airborne: " + airborne.size());
+        System.out.println("On Ground: " + ground.size());
     }
+
 
     public static double haversine(double lat1, double lon1,
                                    double lat2, double lon2) {
