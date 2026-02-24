@@ -17,8 +17,9 @@ Features:
 
 Version Information:
 - Version 1: Global tracker using live OpenSky API data (restricted for free accounts)
-- Version 2: Tracks airborne flights within 50 km of YVR, shows distance, altitude and callsign
+- Version 2: Tracks airborne and grounded flights within 50 km of YVR, shows distance, altitude and callsign
   
 Note:
 Requires an OpenSky account with verified API access.
 Free accounts have restrictions on global live data; regional or pre-curated datasets are recommended for personal projects.
+Due to ADS-B coverage limitations and data availability, some flights may not appear in OpenSky database, even if they are visible on commercial tracking platforms.
